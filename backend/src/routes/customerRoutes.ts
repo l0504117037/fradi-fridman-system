@@ -7,6 +7,10 @@ import {
   deleteCustomer,
   addPurchase,
   getPurchases,
+  addPurchasePayment,
+  addService,
+  addServicePayment,
+  getCustomerHistory,
 } from "../controllers/customerController";
 
 const router = Router();
@@ -17,10 +21,16 @@ router.get("/:id", getCustomer);
 router.put("/:id", updateCustomer);
 router.delete("/:id", deleteCustomer);
 
-// Add a purchase to a customer
+// רכישות (מוצרים / פאות)
 router.post("/:customerId/purchase", addPurchase);
-
-// Get all purchases of a customer
 router.get("/:customerId/purchases", getPurchases);
+router.post("/:customerId/purchases/:purchaseId/payments", addPurchasePayment);
+
+// שירותים שבוצעו
+router.post("/:customerId/services", addService);
+router.post("/:customerId/services/:serviceRecordId/payments", addServicePayment);
+
+// היסטוריה מלאה (רכישות + שירותים)
+router.get("/:customerId/history", getCustomerHistory);
 
 export default router;

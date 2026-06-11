@@ -4,6 +4,10 @@ import customerRoutes from "./routes/customerRoutes";
 import productRoutes from "./routes/productRoutes";
 import employeeRoutes from "./routes/employeeRoutes";
 import employeeMonthlyRoutes from "./routes/employeeMonthlyRoutes";
+import supplierRoutes from "./routes/supplierRoutes";
+import serviceRoutes from "./routes/serviceRoutes";
+import wigRoutes from "./routes/wigRoutes";
+import appointmentRoutes from "./routes/appointmentRoutes";
 
 const app = express();
 
@@ -12,6 +16,10 @@ app.use(express.json());
 app.use("/api", testRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/customers", customerRoutes);
+app.use("/api/suppliers", supplierRoutes);
+app.use("/api/services", serviceRoutes);
+app.use("/api/wigs", wigRoutes);
+app.use("/api/appointments", appointmentRoutes);
 
 
 
