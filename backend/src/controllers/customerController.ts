@@ -3,6 +3,7 @@ import Customer from "../models/Customer";
 import Product from "../models/Product";
 import Wig from "../models/Wig";
 import Service from "../models/Service";
+import Appointment from "../models/Appointment";
 import { addMonths } from "../utils/date";
 
 export function getErrorMessage(err: unknown): string {
@@ -155,6 +156,35 @@ export const addPurchasePayment = async (req: Request, res: Response) => {
   }
 };
 
+// DELETE /api/customers/:customerId/purchases/:purchaseId
+// מוחק רכישה מההיסטוריה, מחזיר מלאי, ומוחק את התור המקושר בלוח השנה
+export const deletePurchase = async (req: Request, res: Response) => {
+  try {
+    const { customerId, purchaseId } = req.params;
+
+    const customer = await Customer.findById(customerId);
+    if (!customer) return res.status(404).json({ error: "Customer not found" });
+
+    const purchase = customer.purchases.id(purchaseId);
+    if (!purchase) return res.status(404).json({ error: "Purchase not found" });
+
+    if (purchase.itemType === "Product") {
+      await Product.findByIdAndUpdate(purchase.item, { $inc: { quantity: 1 } });
+    } else {
+      await Wig.findByIdAndUpdate(purchase.item, { $inc: { quantity: 1 } });
+    }
+
+    purchase.deleteOne();
+    await customer.save();
+
+    await Appointment.findOneAndDelete({ actionKind: "purchase", actionId: purchaseId });
+
+    res.json({ message: "Purchase deleted" });
+  } catch (err: unknown) {
+    res.status(400).json({ error: getErrorMessage(err) });
+  }
+};
+
 // =====================================================
 // שירותים שבוצעו (חפיפה, סירוק, שיפוץ וכו')
 // =====================================================
@@ -220,6 +250,29 @@ export const addServicePayment = async (req: Request, res: Response) => {
     await customer.populate("services.service");
 
     res.status(201).json({ service: customer.services.id(serviceRecordId) });
+  } catch (err: unknown) {
+    res.status(400).json({ error: getErrorMessage(err) });
+  }
+};
+
+// DELETE /api/customers/:customerId/services/:serviceRecordId
+// מוחק רשומת שירות מההיסטוריה, ומוחק את התור המקושר בלוח השנה
+export const deleteServiceRecord = async (req: Request, res: Response) => {
+  try {
+    const { customerId, serviceRecordId } = req.params;
+
+    const customer = await Customer.findById(customerId);
+    if (!customer) return res.status(404).json({ error: "Customer not found" });
+
+    const record = customer.services.id(serviceRecordId);
+    if (!record) return res.status(404).json({ error: "Service record not found" });
+
+    record.deleteOne();
+    await customer.save();
+
+    await Appointment.findOneAndDelete({ actionKind: "service", actionId: serviceRecordId });
+
+    res.json({ message: "Service record deleted" });
   } catch (err: unknown) {
     res.status(400).json({ error: getErrorMessage(err) });
   }

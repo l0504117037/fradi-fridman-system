@@ -8,8 +8,10 @@ import {
   addPurchase,
   getPurchases,
   addPurchasePayment,
+  deletePurchase,
   addService,
   addServicePayment,
+  deleteServiceRecord,
   getCustomerHistory,
 } from "../controllers/customerController";
 
@@ -25,10 +27,12 @@ router.delete("/:id", deleteCustomer);
 router.post("/:customerId/purchase", addPurchase);
 router.get("/:customerId/purchases", getPurchases);
 router.post("/:customerId/purchases/:purchaseId/payments", addPurchasePayment);
+router.delete("/:customerId/purchases/:purchaseId", deletePurchase);
 
 // שירותים שבוצעו
 router.post("/:customerId/services", addService);
 router.post("/:customerId/services/:serviceRecordId/payments", addServicePayment);
+router.delete("/:customerId/services/:serviceRecordId", deleteServiceRecord);
 
 // היסטוריה מלאה (רכישות + שירותים)
 router.get("/:customerId/history", getCustomerHistory);

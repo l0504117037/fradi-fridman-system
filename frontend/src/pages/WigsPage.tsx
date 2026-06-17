@@ -1,8 +1,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { wigsApi } from "../api/wigs";
 import { suppliersApi } from "../api/suppliers";
-import { Supplier, Wig } from "../api/types";
+import { reportsApi } from "../api/reports";
+import { MonthlySummaryReport, Supplier, Wig } from "../api/types";
 import Modal from "../components/Modal";
+import MonthlySummaryModal from "../components/MonthlySummaryModal";
 
 export default function WigsPage() {
   const [wigs, setWigs] = useState<Wig[]>([]);
@@ -10,6 +12,7 @@ export default function WigsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<Wig | "new" | null>(null);
+  const [monthlySummary, setMonthlySummary] = useState<MonthlySummaryReport | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -40,13 +43,26 @@ export default function WigsPage() {
     return wig.supplier.name;
   };
 
+  const openSummary = async () => {
+    try {
+      setMonthlySummary(await reportsApi.monthlySummary());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   return (
     <div className="page">
       <div className="toolbar">
         <h1>פאות</h1>
-        <button className="btn" onClick={() => setEditing("new")}>
-          + פאה חדשה
-        </button>
+        <div>
+          <button className="btn btn-secondary" onClick={openSummary}>
+            סיכום חודשי
+          </button>{" "}
+          <button className="btn" onClick={() => setEditing("new")}>
+            + פאה חדשה
+          </button>
+        </div>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -104,6 +120,14 @@ export default function WigsPage() {
             setEditing(null);
             load();
           }}
+        />
+      )}
+
+      {monthlySummary && (
+        <MonthlySummaryModal
+          title="סיכום חודשי - פאות"
+          entries={monthlySummary.wigs}
+          onClose={() => setMonthlySummary(null)}
         />
       )}
     </div>

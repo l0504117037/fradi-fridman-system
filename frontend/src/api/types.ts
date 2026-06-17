@@ -102,6 +102,45 @@ export interface Appointment {
   actionId: string;
   actionLabel: string;
   actionPrice: number;
+  // הפריט/השירות המקושר בפועל (מוצר/פאה/שירות) - משמש לעדכון התור
+  refItemType?: "Product" | "Wig" | "Service";
+  refItemId?: string;
+}
+
+// סיכום חודשי (לפי לוח שנה לועזי): לכל פריט - מחיר ליחידה, כמות, שולם ונשאר לתשלום
+export interface MonthlySummaryEntry {
+  month: string; // YYYY-MM
+  itemName: string;
+  unitPrice: number;
+  quantity: number;
+  totalPrice: number;
+  paid: number;
+  remaining: number;
+}
+
+export interface MonthlySummaryReport {
+  products: MonthlySummaryEntry[];
+  wigs: MonthlySummaryEntry[];
+  services: MonthlySummaryEntry[];
+}
+
+// סיכום שנתי: הכנסות / הוצאות / רווח לפי חודש
+export interface CategoryAmount {
+  label: string;
+  amount: number;
+  type: "income" | "expense";
+}
+
+export interface YearlySummaryMonth {
+  month: string; // YYYY-MM
+  income: number;
+  expenses: number;
+  profit: number;
+  categories: CategoryAmount[];
+}
+
+export interface YearlySummaryResponse {
+  months: YearlySummaryMonth[];
 }
 
 // בקשה ליצירת תור + פעולה (רכישה/שירות) חדשה ללקוחה
@@ -121,4 +160,18 @@ export interface CreateAppointmentInput {
   price?: number;
   // משותף
   payment?: { amount: number; date?: string };
+}
+
+// בקשה לעדכון תור קיים - כל השדות אופציונליים
+export interface UpdateAppointmentInput {
+  date?: string;
+  time?: string;
+  note?: string;
+  status?: AppointmentStatus;
+  actionKind?: ActionKind;
+  itemType?: "Product" | "Wig";
+  itemId?: string;
+  totalPrice?: number;
+  serviceId?: string;
+  price?: number;
 }

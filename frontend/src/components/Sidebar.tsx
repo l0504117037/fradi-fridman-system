@@ -7,6 +7,7 @@ const links = [
   { to: "/wigs", label: "פאות", end: false },
   { to: "/products", label: "מוצרים", end: false },
   { to: "/services", label: "שירותים", end: false },
+  { to: "/summaries", label: "סיכומים", end: false },
 ];
 
 export default function Sidebar() {

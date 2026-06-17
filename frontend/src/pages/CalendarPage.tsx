@@ -9,6 +9,7 @@ import {
   addDays,
   formatDateDisplay,
   formatDateISO,
+  formatHebrewDate,
   formatHour,
   getRegularHours,
   getWeekStart,
@@ -25,6 +26,7 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [addModal, setAddModal] = useState<{ date: Date; time: string } | null>(null);
+  const [editAppointment, setEditAppointment] = useState<Appointment | null>(null);
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
 
   const days = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i));
@@ -60,8 +62,20 @@ export default function CalendarPage() {
       .sort((a, b) => a.time.localeCompare(b.time));
   };
 
-  const goToCustomer = (a: Appointment) => {
+  const goToCustomerHistory = (a: Appointment) => {
     navigate(`/customers/${a.customer._id}?highlightKind=${a.actionKind}&highlightId=${a.actionId}`);
+  };
+
+  const handleDeleteAppointment = async (a: Appointment) => {
+    if (!window.confirm("למחוק את הפעולה הזו? הפעולה תימחק גם מכרטיס הלקוחה והמלאי יוחזר אם רלוונטי.")) {
+      return;
+    }
+    try {
+      await appointmentsApi.remove(a._id);
+      loadWeek();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const renderChip = (a: Appointment) => {
@@ -69,7 +83,27 @@ export default function CalendarPage() {
     const isExpanded = expandedNote === a._id;
     const showFull = !note || note.length <= NOTE_TRUNCATE_LENGTH || isExpanded;
     return (
-      <div className="appt-chip" key={a._id} onClick={() => goToCustomer(a)}>
+      <div className="appt-chip" key={a._id} onClick={() => setEditAppointment(a)}>
+        <button
+          className="chip-delete"
+          title="מחיקה"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDeleteAppointment(a);
+          }}
+        >
+          ×
+        </button>
+        <button
+          className="chip-history"
+          title="להיסטוריית הלקוחה"
+          onClick={(e) => {
+            e.stopPropagation();
+            goToCustomerHistory(a);
+          }}
+        >
+          היסטוריה
+        </button>
         <div className="chip-time">{a.time}</div>
         <div className="chip-customer">
           {a.customer.firstname} {a.customer.lastname}
@@ -99,7 +133,10 @@ export default function CalendarPage() {
         <h2>
           {formatDateDisplay(weekStart)} - {formatDateDisplay(addDays(weekStart, 5))}
         </h2>
-        <button onClick={() => setWeekStart(addDays(weekStart, 7))}>שבוע הבא &rarr;</button>
+        <div>
+          <button onClick={() => setWeekStart(addDays(weekStart, 7))}>שבוע הבא &rarr;</button>
+          <button onClick={() => setWeekStart(getWeekStart(new Date()))}>היום</button>
+        </div>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -114,6 +151,7 @@ export default function CalendarPage() {
                 <th key={i}>
                   <div>{DAY_NAMES[i]}</div>
                   <div>{formatDateDisplay(day)}</div>
+                  <div className="hebrew-date">{formatHebrewDate(day)}</div>
                 </th>
               ))}
             </tr>
@@ -171,6 +209,19 @@ export default function CalendarPage() {
           onClose={() => setAddModal(null)}
           onDone={() => {
             setAddModal(null);
+            loadWeek();
+          }}
+        />
+      )}
+
+      {editAppointment && (
+        <AppointmentActionModal
+          appointment={editAppointment}
+          initialDate={editAppointment.date.slice(0, 10)}
+          initialTime={editAppointment.time}
+          onClose={() => setEditAppointment(null)}
+          onDone={() => {
+            setEditAppointment(null);
             loadWeek();
           }}
         />

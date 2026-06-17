@@ -14,6 +14,9 @@ export interface IAppointment extends Document {
   actionId: Types.ObjectId;
   actionLabel: string;
   actionPrice: number;
+  // הפריט/השירות המקושר בפועל (מוצר/פאה/שירות) - משמש לעדכון התור
+  refItemType?: "Product" | "Wig" | "Service";
+  refItemId?: Types.ObjectId;
 }
 
 const AppointmentSchema: Schema = new Schema(
@@ -31,6 +34,8 @@ const AppointmentSchema: Schema = new Schema(
     actionId: { type: Schema.Types.ObjectId, required: true },
     actionLabel: { type: String, required: true },
     actionPrice: { type: Number, required: true },
+    refItemType: { type: String, enum: ["Product", "Wig", "Service"] },
+    refItemId: { type: Schema.Types.ObjectId },
   },
   { timestamps: true }
 );

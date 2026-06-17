@@ -59,6 +59,20 @@ export default function CustomerDetailPage() {
     });
   };
 
+  const handleDeleteItem = async (item: HistoryItem) => {
+    if (!window.confirm("למחוק פעולה זו? היא תימחק גם מלוח השנה והמלאי יוחזר אם רלוונטי.")) return;
+    try {
+      if (item.kind === "purchase") {
+        await customersApi.deletePurchase(customer._id, item._id);
+      } else {
+        await customersApi.deleteServiceRecord(customer._id, item._id);
+      }
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   return (
     <div className="page">
       <Link to="/customers" className="back-link">
@@ -115,6 +129,9 @@ export default function CustomerDetailPage() {
                     )}{" "}
                     <button className="link-btn" onClick={() => togglePayments(item._id)}>
                       {isExpanded ? "הסתר תשלומים" : "הצג תשלומים"}
+                    </button>{" "}
+                    <button className="link-btn link-btn-danger" onClick={() => handleDeleteItem(item)}>
+                      מחיקה
                     </button>
                   </td>
                 </tr>

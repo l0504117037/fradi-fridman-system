@@ -1,13 +1,16 @@
 import { FormEvent, useEffect, useState } from "react";
 import { servicesApi } from "../api/services";
-import { ServiceItem } from "../api/types";
+import { reportsApi } from "../api/reports";
+import { MonthlySummaryReport, ServiceItem } from "../api/types";
 import Modal from "../components/Modal";
+import MonthlySummaryModal from "../components/MonthlySummaryModal";
 
 export default function ServicesPage() {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<ServiceItem | "new" | null>(null);
+  const [monthlySummary, setMonthlySummary] = useState<MonthlySummaryReport | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -31,13 +34,26 @@ export default function ServicesPage() {
     load();
   };
 
+  const openSummary = async () => {
+    try {
+      setMonthlySummary(await reportsApi.monthlySummary());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   return (
     <div className="page">
       <div className="toolbar">
         <h1>שירותים</h1>
-        <button className="btn" onClick={() => setEditing("new")}>
-          + שירות חדש
-        </button>
+        <div>
+          <button className="btn btn-secondary" onClick={openSummary}>
+            סיכום חודשי
+          </button>{" "}
+          <button className="btn" onClick={() => setEditing("new")}>
+            + שירות חדש
+          </button>
+        </div>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -86,6 +102,14 @@ export default function ServicesPage() {
             setEditing(null);
             load();
           }}
+        />
+      )}
+
+      {monthlySummary && (
+        <MonthlySummaryModal
+          title="סיכום חודשי - שירותים"
+          entries={monthlySummary.services}
+          onClose={() => setMonthlySummary(null)}
         />
       )}
     </div>

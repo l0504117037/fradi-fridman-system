@@ -1,13 +1,16 @@
 import { FormEvent, useEffect, useState } from "react";
 import { productsApi } from "../api/products";
-import { Product } from "../api/types";
+import { reportsApi } from "../api/reports";
+import { MonthlySummaryReport, Product } from "../api/types";
 import Modal from "../components/Modal";
+import MonthlySummaryModal from "../components/MonthlySummaryModal";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<Product | "new" | null>(null);
+  const [monthlySummary, setMonthlySummary] = useState<MonthlySummaryReport | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -31,13 +34,26 @@ export default function ProductsPage() {
     load();
   };
 
+  const openSummary = async () => {
+    try {
+      setMonthlySummary(await reportsApi.monthlySummary());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   return (
     <div className="page">
       <div className="toolbar">
         <h1>מוצרים</h1>
-        <button className="btn" onClick={() => setEditing("new")}>
-          + מוצר חדש
-        </button>
+        <div>
+          <button className="btn btn-secondary" onClick={openSummary}>
+            סיכום חודשי
+          </button>{" "}
+          <button className="btn" onClick={() => setEditing("new")}>
+            + מוצר חדש
+          </button>
+        </div>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -86,6 +102,14 @@ export default function ProductsPage() {
             setEditing(null);
             load();
           }}
+        />
+      )}
+
+      {monthlySummary && (
+        <MonthlySummaryModal
+          title="סיכום חודשי - מוצרים"
+          entries={monthlySummary.products}
+          onClose={() => setMonthlySummary(null)}
         />
       )}
     </div>

@@ -3,7 +3,7 @@ import { appointmentsApi } from "../api/appointments";
 import { productsApi } from "../api/products";
 import { wigsApi } from "../api/wigs";
 import { servicesApi } from "../api/services";
-import { ActionKind, Customer, Product, ServiceItem, Wig } from "../api/types";
+import { ActionKind, Appointment, Customer, Product, ServiceItem, UpdateAppointmentInput, Wig } from "../api/types";
 import Modal from "./Modal";
 
 interface AppointmentActionModalProps {
@@ -11,6 +11,8 @@ interface AppointmentActionModalProps {
   customers?: Customer[];
   // אם הלקוחה כבר ידועה (לדוגמה: מכרטיס הלקוחה)
   fixedCustomer?: Customer;
+  // אם מועבר - המודאל ייפתח במצב עדכון של תור קיים
+  appointment?: Appointment;
   initialDate: string; // YYYY-MM-DD
   initialTime?: string; // HH:MM
   onClose: () => void;
@@ -20,25 +22,32 @@ interface AppointmentActionModalProps {
 export default function AppointmentActionModal({
   customers,
   fixedCustomer,
+  appointment,
   initialDate,
   initialTime,
   onClose,
   onDone,
 }: AppointmentActionModalProps) {
-  const [customerId, setCustomerId] = useState(fixedCustomer?._id ?? "");
-  const [date, setDate] = useState(initialDate);
-  const [time, setTime] = useState(initialTime ?? "");
-  const [actionType, setActionType] = useState<ActionKind>("service");
-  const [itemType, setItemType] = useState<"Product" | "Wig">("Product");
+  const isEdit = !!appointment;
+
+  const [customerId, setCustomerId] = useState(appointment?.customer._id ?? fixedCustomer?._id ?? "");
+  const [date, setDate] = useState(appointment ? appointment.date.slice(0, 10) : initialDate);
+  const [time, setTime] = useState(appointment?.time ?? initialTime ?? "");
+  const [actionType, setActionType] = useState<ActionKind>(appointment?.actionKind ?? "service");
+  const [itemType, setItemType] = useState<"Product" | "Wig">(
+    appointment?.refItemType === "Product" || appointment?.refItemType === "Wig" ? appointment.refItemType : "Product"
+  );
   const [products, setProducts] = useState<Product[]>([]);
   const [wigs, setWigs] = useState<Wig[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
-  const [itemId, setItemId] = useState("");
-  const [price, setPrice] = useState<number | "">("");
-  const [note, setNote] = useState("");
+  const [itemId, setItemId] = useState(appointment?.refItemId ?? "");
+  const [price, setPrice] = useState<number | "">(appointment?.actionPrice ?? "");
+  const [note, setNote] = useState(appointment?.note ?? "");
   const [paymentAmount, setPaymentAmount] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // האם המשתמשת שינתה את פרטי הפעולה (סוג/פריט/שירות/מחיר) במצב עדכון
+  const [actionChanged, setActionChanged] = useState(false);
 
   useEffect(() => {
     productsApi.list().then(setProducts).catch(() => {});
@@ -50,6 +59,7 @@ export default function AppointmentActionModal({
 
   const handleItemChange = (id: string) => {
     setItemId(id);
+    setActionChanged(true);
     if (actionType === "purchase") {
       const item = items.find((i) => i._id === id);
       if (item) setPrice(item.price);
@@ -61,7 +71,7 @@ export default function AppointmentActionModal({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!customerId) {
+    if (!isEdit && !customerId) {
       setError("יש לבחור לקוחה");
       return;
     }
@@ -69,29 +79,50 @@ export default function AppointmentActionModal({
       setError("יש להזין תאריך ושעה");
       return;
     }
-    if (!itemId) {
+    if (!itemId && (!isEdit || actionChanged)) {
       setError("יש לבחור פריט / שירות");
       return;
     }
     setSaving(true);
     setError("");
     try {
-      const payment =
-        paymentAmount !== "" && Number(paymentAmount) > 0 ? { amount: Number(paymentAmount) } : undefined;
+      if (isEdit && appointment) {
+        const payload: UpdateAppointmentInput = {
+          date,
+          time,
+          note: note || undefined,
+        };
 
-      await appointmentsApi.create({
-        customer: customerId,
-        date,
-        time,
-        note: note || undefined,
-        actionKind: actionType,
-        itemType: actionType === "purchase" ? itemType : undefined,
-        itemId: actionType === "purchase" ? itemId : undefined,
-        totalPrice: actionType === "purchase" ? (price === "" ? undefined : Number(price)) : undefined,
-        serviceId: actionType === "service" ? itemId : undefined,
-        price: actionType === "service" ? (price === "" ? undefined : Number(price)) : undefined,
-        payment,
-      });
+        // שולחים את פרטי הפעולה (פריט/שירות/מחיר) רק אם הם שונו בפועל,
+        // כדי לא ליצור רשומת רכישה/שירות חדשה ולמחוק את הקיימת (כולל היסטוריית תשלומים) ללא צורך
+        if (actionChanged) {
+          payload.actionKind = actionType;
+          payload.itemType = actionType === "purchase" ? itemType : undefined;
+          payload.itemId = actionType === "purchase" ? itemId : undefined;
+          payload.totalPrice = actionType === "purchase" ? (price === "" ? undefined : Number(price)) : undefined;
+          payload.serviceId = actionType === "service" ? itemId : undefined;
+          payload.price = actionType === "service" ? (price === "" ? undefined : Number(price)) : undefined;
+        }
+
+        await appointmentsApi.update(appointment._id, payload);
+      } else {
+        const payment =
+          paymentAmount !== "" && Number(paymentAmount) > 0 ? { amount: Number(paymentAmount) } : undefined;
+
+        await appointmentsApi.create({
+          customer: customerId,
+          date,
+          time,
+          note: note || undefined,
+          actionKind: actionType,
+          itemType: actionType === "purchase" ? itemType : undefined,
+          itemId: actionType === "purchase" ? itemId : undefined,
+          totalPrice: actionType === "purchase" ? (price === "" ? undefined : Number(price)) : undefined,
+          serviceId: actionType === "service" ? itemId : undefined,
+          price: actionType === "service" ? (price === "" ? undefined : Number(price)) : undefined,
+          payment,
+        });
+      }
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -101,9 +132,13 @@ export default function AppointmentActionModal({
   };
 
   return (
-    <Modal title="הוספת תור ופעולה" onClose={onClose}>
+    <Modal title={isEdit ? "עדכון תור ופעולה" : "הוספת תור ופעולה"} onClose={onClose}>
       <form onSubmit={handleSubmit} className="form">
-        {customers ? (
+        {isEdit ? (
+          <p>
+            לקוחה: <strong>{appointment!.customer.firstname} {appointment!.customer.lastname}</strong>
+          </p>
+        ) : customers ? (
           <label>
             לקוחה
             <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
@@ -126,11 +161,25 @@ export default function AppointmentActionModal({
         <div className="form-row">
           <label>
             תאריך
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value);
+                e.target.blur();
+              }}
+            />
           </label>
           <label>
             שעה
-            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => {
+                setTime(e.target.value);
+                e.target.blur();
+              }}
+            />
           </label>
         </div>
 
@@ -142,6 +191,7 @@ export default function AppointmentActionModal({
               setActionType(e.target.value as ActionKind);
               setItemId("");
               setPrice("");
+              setActionChanged(true);
             }}
           >
             <option value="service">שירות</option>
@@ -158,6 +208,7 @@ export default function AppointmentActionModal({
                 setItemType(e.target.value as "Product" | "Wig");
                 setItemId("");
                 setPrice("");
+                setActionChanged(true);
               }}
             >
               <option value="Product">מוצר</option>
@@ -189,7 +240,10 @@ export default function AppointmentActionModal({
           <input
             type="number"
             value={price}
-            onChange={(e) => setPrice(e.target.value === "" ? "" : Number(e.target.value))}
+            onChange={(e) => {
+              setPrice(e.target.value === "" ? "" : Number(e.target.value));
+              setActionChanged(true);
+            }}
           />
         </label>
 
@@ -198,18 +252,20 @@ export default function AppointmentActionModal({
           <textarea value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
 
-        <label>
-          תשלום ראשוני (אופציונלי)
-          <input
-            type="number"
-            value={paymentAmount}
-            onChange={(e) => setPaymentAmount(e.target.value === "" ? "" : Number(e.target.value))}
-          />
-        </label>
+        {!isEdit && (
+          <label>
+            תשלום ראשוני (אופציונלי)
+            <input
+              type="number"
+              value={paymentAmount}
+              onChange={(e) => setPaymentAmount(e.target.value === "" ? "" : Number(e.target.value))}
+            />
+          </label>
+        )}
 
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={saving}>
-          {saving ? "שומר..." : "שמירה"}
+          {saving ? "שומר..." : isEdit ? "שמור" : "שמירה"}
         </button>
       </form>
     </Modal>

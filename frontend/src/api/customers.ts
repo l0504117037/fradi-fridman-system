@@ -25,6 +25,9 @@ export const customersApi = {
   addPurchasePayment: (customerId: string, purchaseId: string, data: { amount: number; date?: string }) =>
     api.post(`/customers/${customerId}/purchases/${purchaseId}/payments`, data),
 
+  deletePurchase: (customerId: string, purchaseId: string) =>
+    api.delete<{ message: string }>(`/customers/${customerId}/purchases/${purchaseId}`),
+
   addService: (
     customerId: string,
     data: {
@@ -38,4 +41,7 @@ export const customersApi = {
 
   addServicePayment: (customerId: string, serviceRecordId: string, data: { amount: number; date?: string }) =>
     api.post(`/customers/${customerId}/services/${serviceRecordId}/payments`, data),
+
+  deleteServiceRecord: (customerId: string, serviceRecordId: string) =>
+    api.delete<{ message: string }>(`/customers/${customerId}/services/${serviceRecordId}`),
 };

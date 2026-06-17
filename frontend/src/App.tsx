@@ -8,6 +8,7 @@ import SupplierDetailPage from "./pages/SupplierDetailPage";
 import WigsPage from "./pages/WigsPage";
 import ProductsPage from "./pages/ProductsPage";
 import ServicesPage from "./pages/ServicesPage";
+import SummariesPage from "./pages/SummariesPage";
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/wigs" element={<WigsPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/services" element={<ServicesPage />} />
+          <Route path="/summaries" element={<SummariesPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
