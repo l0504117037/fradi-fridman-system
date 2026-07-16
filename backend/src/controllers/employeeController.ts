@@ -16,9 +16,18 @@ export const createEmployee = async (req: Request, res: Response) => {
 };
 
 // Get all employees
-export const getEmployees = async (_req: Request, res: Response) => {
+export const getEmployees = async (req: Request, res: Response) => {
   try {
-    const employees = await Employee.find();
+    const { search } = req.query;
+    const filter = search
+      ? { $or: [
+          { firstName: { $regex: search, $options: "i" } },
+          { lastName:  { $regex: search, $options: "i" } },
+          { phone:     { $regex: search, $options: "i" } },
+          { email:     { $regex: search, $options: "i" } },
+        ]}
+      : {};
+    const employees = await Employee.find(filter);
     res.json(employees);
   } catch (err) {
     if (err instanceof Error) {

@@ -33,10 +33,15 @@ export default function AppointmentActionModal({
   const [customerId, setCustomerId] = useState(appointment?.customer._id ?? fixedCustomer?._id ?? "");
   const [date, setDate] = useState(appointment ? appointment.date.slice(0, 10) : initialDate);
   const [time, setTime] = useState(appointment?.time ?? initialTime ?? "");
-  const [actionType, setActionType] = useState<ActionKind>(appointment?.actionKind ?? "service");
-  const [itemType, setItemType] = useState<"Product" | "Wig">(
-    appointment?.refItemType === "Product" || appointment?.refItemType === "Wig" ? appointment.refItemType : "Product"
-  );
+  type ActionSelection = "service" | "Product" | "Wig";
+  const [actionSelection, setActionSelection] = useState<ActionSelection>(() => {
+    if (appointment?.actionKind === "purchase") {
+      return appointment?.refItemType === "Wig" ? "Wig" : "Product";
+    }
+    return "service";
+  });
+  const actionType: ActionKind = actionSelection === "service" ? "service" : "purchase";
+  const itemType: "Product" | "Wig" | undefined = actionSelection !== "service" ? actionSelection : undefined;
   const [products, setProducts] = useState<Product[]>([]);
   const [wigs, setWigs] = useState<Wig[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -55,7 +60,7 @@ export default function AppointmentActionModal({
     servicesApi.list().then(setServices).catch(() => {});
   }, []);
 
-  const items: Array<Product | Wig> = itemType === "Product" ? products : wigs;
+  const items: Array<Product | Wig> = actionSelection === "Wig" ? wigs : products;
 
   const handleItemChange = (id: string) => {
     setItemId(id);
@@ -186,50 +191,36 @@ export default function AppointmentActionModal({
         <label>
           סוג פעולה
           <select
-            value={actionType}
+            value={actionSelection}
             onChange={(e) => {
-              setActionType(e.target.value as ActionKind);
+              setActionSelection(e.target.value as ActionSelection);
               setItemId("");
               setPrice("");
               setActionChanged(true);
             }}
           >
             <option value="service">שירות</option>
-            <option value="purchase">רכישת מוצר / פאה</option>
+            <option value="Product">מוצר</option>
+            <option value="Wig">פאה</option>
           </select>
         </label>
 
-        {actionType === "purchase" && (
-          <label>
-            סוג פריט
-            <select
-              value={itemType}
-              onChange={(e) => {
-                setItemType(e.target.value as "Product" | "Wig");
-                setItemId("");
-                setPrice("");
-                setActionChanged(true);
-              }}
-            >
-              <option value="Product">מוצר</option>
-              <option value="Wig">פאה</option>
-            </select>
-          </label>
-        )}
-
         <label>
-          {actionType === "purchase" ? "פריט" : "שירות"}
+          {actionSelection === "service" ? "שירות" : actionSelection === "Wig" ? "פאה" : "מוצר"}
           <select value={itemId} onChange={(e) => handleItemChange(e.target.value)}>
             <option value="">בחרי</option>
-            {actionType === "purchase"
-              ? items.map((i) => (
-                  <option key={i._id} value={i._id}>
-                    {itemType === "Wig" ? (i as Wig).name : (i as Product).type} - {i.price}₪
-                  </option>
-                ))
-              : services.map((s) => (
+            {actionSelection === "service"
+              ? services.map((s) => (
                   <option key={s._id} value={s._id}>
                     {s.name} - {s.price}₪
+                  </option>
+                ))
+              : items.map((i) => (
+                  <option key={i._id} value={i._id} disabled={i.quantity <= 0}>
+                    {actionSelection === "Wig"
+                      ? `${(i as Wig).name} (${(i as Wig).category === "boutique" ? "בוטיק" : "סטנדרט"})`
+                      : (i as Product).type} - {i.price}₪
+                    {i.quantity <= 0 ? " (אין במלאי)" : ` (${i.quantity} במלאי)`}
                   </option>
                 ))}
           </select>

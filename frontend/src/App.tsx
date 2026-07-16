@@ -9,6 +9,10 @@ import WigsPage from "./pages/WigsPage";
 import ProductsPage from "./pages/ProductsPage";
 import ServicesPage from "./pages/ServicesPage";
 import SummariesPage from "./pages/SummariesPage";
+import EmployeesPage from "./pages/EmployeesPage";
+import EmployeeDetailPage from "./pages/EmployeeDetailPage";
+import HairdressersPage from "./pages/HairdressersPage";
+import HairdresserDetailPage from "./pages/HairdresserDetailPage";
 
 export default function App() {
   return (
@@ -23,6 +27,10 @@ export default function App() {
           <Route path="/wigs" element={<WigsPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/services" element={<ServicesPage />} />
+          <Route path="/employees" element={<EmployeesPage />} />
+          <Route path="/employees/:id" element={<EmployeeDetailPage />} />
+          <Route path="/hairdressers" element={<HairdressersPage />} />
+          <Route path="/hairdressers/:id" element={<HairdresserDetailPage />} />
           <Route path="/summaries" element={<SummariesPage />} />
         </Route>
       </Routes>

@@ -46,6 +46,8 @@ const applyAction = async (customer: ICustomer, actionDate: Date, input: ActionI
     const item = itemType === "Product" ? await Product.findById(itemId) : await Wig.findById(itemId);
     if (!item) throw new Error(`${itemType} not found`);
 
+    if (item.quantity <= 0) throw new Error("אין במלאי");
+
     const finalPrice = totalPrice ?? item.price;
 
     // הורדה מהמלאי

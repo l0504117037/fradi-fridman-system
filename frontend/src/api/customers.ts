@@ -2,7 +2,10 @@ import { api } from "./client";
 import { Customer, CustomerHistory } from "./types";
 
 export const customersApi = {
-  list: () => api.get<Customer[]>("/customers"),
+  list: (params?: { search?: string }) => {
+    const qs = params?.search ? `?search=${encodeURIComponent(params.search)}` : "";
+    return api.get<Customer[]>(`/customers${qs}`);
+  },
   get: (id: string) => api.get<Customer>(`/customers/${id}`),
   create: (data: Omit<Customer, "_id">) => api.post<Customer>("/customers", data),
   update: (id: string, data: Partial<Omit<Customer, "_id">>) =>

@@ -75,9 +75,6 @@ export default function CustomerDetailPage() {
 
   return (
     <div className="page">
-      <Link to="/customers" className="back-link">
-        &rarr; חזרה ללקוחות
-      </Link>
 
       <div className="toolbar">
         <h1>

@@ -2,7 +2,10 @@ import { api } from "./client";
 import { Supplier, SupplierTransaction } from "./types";
 
 export const suppliersApi = {
-  list: () => api.get<Supplier[]>("/suppliers"),
+  list: (params?: { search?: string }) => {
+    const qs = params?.search ? `?search=${encodeURIComponent(params.search)}` : "";
+    return api.get<Supplier[]>(`/suppliers${qs}`);
+  },
   get: (id: string) => api.get<Supplier>(`/suppliers/${id}`),
   create: (data: { name: string; phone?: string; email?: string; address?: string; notes?: string }) =>
     api.post<Supplier>("/suppliers", data),

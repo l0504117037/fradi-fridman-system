@@ -3,10 +3,26 @@ import { MonthlySummaryEntry } from "../api/types";
 import { formatMonthLabel, getCurrentMonthKey } from "../utils/date";
 import Modal from "./Modal";
 
+interface ColumnLabels {
+  itemName?: string;
+  unitPrice?: string | null;
+  quantity?: string | null;
+  totalPrice?: string;
+  paid?: string;
+  remaining?: string;
+  cards?: {
+    quantity?: string | null;
+    paid?: string;
+    remaining?: string;
+    total?: string;
+  };
+}
+
 interface MonthlySummaryModalProps {
   title: string;
   entries: MonthlySummaryEntry[];
   onClose: () => void;
+  labels?: ColumnLabels;
 }
 
 const prevMonthKey = (month: string): string => {
@@ -19,7 +35,15 @@ const nextMonthKey = (month: string): string => {
   return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
 };
 
-export default function MonthlySummaryModal({ title, entries, onClose }: MonthlySummaryModalProps) {
+export default function MonthlySummaryModal({ title, entries, onClose, labels = {} }: MonthlySummaryModalProps) {
+  const col = {
+    itemName:   labels.itemName   ?? "שם מוצר",
+    unitPrice:  "unitPrice"  in labels ? labels.unitPrice  : "מחיר ליחידה",
+    quantity:   "quantity"   in labels ? labels.quantity   : "כמות",
+    totalPrice: labels.totalPrice ?? "סהכ לתשלום",
+    paid:       labels.paid       ?? "שולם",
+    remaining:  labels.remaining  ?? "לתשלום",
+  };
   const [month, setMonth] = useState(getCurrentMonthKey());
   const monthEntries = entries.filter((e) => e.month === month);
 
@@ -32,31 +56,33 @@ export default function MonthlySummaryModal({ title, entries, onClose }: Monthly
     <Modal title={title} onClose={onClose}>
       <div className="monthly-nav">
         <button className="nav-arrow" onClick={() => setMonth(prevMonthKey(month))}>
-          ◄
+          ►
         </button>
         <span className="monthly-nav-label">{formatMonthLabel(month)}</span>
         <button className="nav-arrow" onClick={() => setMonth(nextMonthKey(month))}>
-          ►
+          ◄
         </button>
       </div>
 
       <div className="summary-cards">
+        {labels.cards?.quantity !== null && (
+          <div className="summary-card">
+            <div className="label">{labels.cards?.quantity ?? "פריטים שנקנו"}</div>
+            <div className="value">{totalQuantity}</div>
+          </div>
+        )}
         <div className="summary-card">
-          <div className="label">פריטים שנקנו</div>
-          <div className="value">{totalQuantity}</div>
-        </div>
-        <div className="summary-card">
-          <div className="label">שולם</div>
+          <div className="label">{labels.cards?.paid ?? "שולם"}</div>
           <div className="value amount-paid">₪{totalPaid}</div>
         </div>
         <div className="summary-card">
-          <div className="label">צריך להיכנס</div>
+          <div className="label">{labels.cards?.remaining ?? "צריך להיכנס"}</div>
           <div className={`value ${totalRemaining > 0 ? "amount-remaining" : "amount-paid"}`}>
             ₪{totalRemaining}
           </div>
         </div>
         <div className="summary-card">
-          <div className="label">הכנסות</div>
+          <div className="label">{labels.cards?.total ?? "הכנסות"}</div>
           <div className="value">₪{totalPrice}</div>
         </div>
       </div>
@@ -64,20 +90,20 @@ export default function MonthlySummaryModal({ title, entries, onClose }: Monthly
       <table>
         <thead>
           <tr>
-            <th>שם מוצר</th>
-            <th>מחיר ליחידה</th>
-            <th>כמות</th>
-            <th>סהכ לתשלום</th>
-            <th>שולם</th>
-            <th>לתשלום</th>
+            <th>{col.itemName}</th>
+            {col.unitPrice  != null && <th>{col.unitPrice}</th>}
+            {col.quantity   != null && <th>{col.quantity}</th>}
+            <th>{col.totalPrice}</th>
+            <th>{col.paid}</th>
+            <th>{col.remaining}</th>
           </tr>
         </thead>
         <tbody>
           {monthEntries.map((e) => (
             <tr key={e.itemName}>
               <td>{e.itemName}</td>
-              <td>₪{e.unitPrice}</td>
-              <td>{e.quantity}</td>
+              {col.unitPrice  != null && <td>₪{e.unitPrice}</td>}
+              {col.quantity   != null && <td>{e.quantity}</td>}
               <td>₪{e.totalPrice}</td>
               <td className="amount-paid">₪{e.paid}</td>
               <td>
@@ -91,7 +117,9 @@ export default function MonthlySummaryModal({ title, entries, onClose }: Monthly
           ))}
           {monthEntries.length === 0 && (
             <tr>
-              <td colSpan={6}>אין נתונים לחודש זה</td>
+              <td colSpan={col.unitPrice != null && col.quantity != null ? 6 : col.unitPrice != null || col.quantity != null ? 5 : 4}>
+                אין נתונים לחודש זה
+              </td>
             </tr>
           )}
         </tbody>

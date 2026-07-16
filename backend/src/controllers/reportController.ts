@@ -5,6 +5,8 @@ import Wig, { IWig } from "../models/Wig";
 import Service, { IService } from "../models/Service";
 import Supplier from "../models/Supplier";
 import EmployeeMonthly from "../models/EmployeeMonthly";
+import HairdresserSale from "../models/HairdresserSale";
+import Hairdresser, { IHairdresser } from "../models/Hairdresser";
 
 const getErrorMessage = (err: unknown): string => {
   if (err instanceof Error) return err.message;
@@ -71,9 +73,14 @@ export const getMonthlySummary = async (_req: Request, res: Response) => {
       }
     }
 
+    // fetch all referenced wigs (with category)
+    const allWigIds = new Set([...Array.from(wigIds)]);
+    const hairdresserSales = await HairdresserSale.find().populate<{ wig: IWig }>("wig");
+    for (const hs of hairdresserSales) allWigIds.add(String(hs.wig._id ?? hs.wig));
+
     const [products, wigs, services] = await Promise.all([
       Product.find({ _id: { $in: Array.from(productIds) } }).select("type price"),
-      Wig.find({ _id: { $in: Array.from(wigIds) } }).select("name price"),
+      Wig.find({ _id: { $in: Array.from(allWigIds) } }).select("name price category"),
       Service.find({ _id: { $in: Array.from(serviceIds) } }).select("name price"),
     ]);
 
@@ -82,18 +89,28 @@ export const getMonthlySummary = async (_req: Request, res: Response) => {
     const serviceMap = new Map<string, IService>(services.map((s) => [String(s._id), s]));
 
     const productsMap = new Map<string, MonthlySummaryEntry>();
-    const wigsMap = new Map<string, MonthlySummaryEntry>();
+    const customerWigsMap = new Map<string, MonthlySummaryEntry>();
+    const hairdresserWigsMap = new Map<string, MonthlySummaryEntry>();
     const servicesMap = new Map<string, MonthlySummaryEntry>();
+
+    const catLabel = (w: IWig) => w.category === "boutique" ? "בוטיק" : "סטנדרט";
 
     for (const customer of customers) {
       for (const purchase of customer.purchases) {
         const isProduct = purchase.itemType === "Product";
-        const map = isProduct ? productsMap : wigsMap;
-        const ref = isProduct ? productMap.get(String(purchase.item)) : wigMap.get(String(purchase.item));
-        const itemName = ref ? (isProduct ? (ref as IProduct).type : (ref as IWig).name) : "לא ידוע";
-        const unitPrice = ref?.price ?? 0;
-        const paid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
-        addEntry(map, monthKey(purchase.date), itemName, unitPrice, purchase.totalPrice, paid);
+        if (isProduct) {
+          const ref = productMap.get(String(purchase.item));
+          const itemName = ref ? ref.type : "לא ידוע";
+          const unitPrice = ref?.price ?? 0;
+          const paid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
+          addEntry(productsMap, monthKey(purchase.date), itemName, unitPrice, purchase.totalPrice, paid);
+        } else {
+          const ref = wigMap.get(String(purchase.item));
+          const itemName = ref ? `${ref.name} (${catLabel(ref)})` : "לא ידוע";
+          const unitPrice = ref?.price ?? 0;
+          const paid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
+          addEntry(customerWigsMap, monthKey(purchase.date), itemName, unitPrice, purchase.totalPrice, paid);
+        }
       }
 
       for (const record of customer.services) {
@@ -105,10 +122,80 @@ export const getMonthlySummary = async (_req: Request, res: Response) => {
       }
     }
 
+    for (const hs of hairdresserSales) {
+      const wigRef = wigMap.get(String((hs.wig as any)._id ?? hs.wig));
+      const itemName = wigRef ? `${wigRef.name} (${catLabel(wigRef)})` : "לא ידוע";
+      const unitPrice = wigRef?.price ?? 0;
+      const paid = hs.payments.reduce((sum, p) => sum + p.amount, 0);
+      addEntry(hairdresserWigsMap, monthKey(hs.date), itemName, unitPrice, hs.totalPrice, paid);
+    }
+
+    // ספקים: רכישות vs תשלומים לפי חודש
+    const suppliersData = await Supplier.find().select("name transactions");
+    const suppliersMap = new Map<string, MonthlySummaryEntry>();
+    for (const supplier of suppliersData) {
+      for (const tx of supplier.transactions) {
+        const key = `${monthKey(tx.date)}|${supplier.name}`;
+        const existing = suppliersMap.get(key) ?? {
+          month: monthKey(tx.date), itemName: supplier.name,
+          unitPrice: 0, quantity: 0, totalPrice: 0, paid: 0, remaining: 0,
+        };
+        if (tx.type === "purchase") existing.totalPrice += tx.amount;
+        else if (tx.type === "payment") existing.paid += tx.amount;
+        existing.remaining = existing.totalPrice - existing.paid;
+        suppliersMap.set(key, existing);
+      }
+    }
+
+    // עובדות: שכר לתשלום vs ששולם לפי חודש
+    const employeeMonthlyData = await EmployeeMonthly.find()
+      .populate<{ employee: { firstName: string; lastName: string; hourlyRate: number } }>("employee")
+      .select("employee date hoursWorked salaryDue salaryPaid");
+    const employeesMap = new Map<string, MonthlySummaryEntry>();
+    for (const em of employeeMonthlyData) {
+      const emp = em.employee as any;
+      const name = emp ? `${emp.firstName} ${emp.lastName}` : "לא ידוע";
+      const key = `${monthKey(em.date)}|${name}`;
+      const existing = employeesMap.get(key) ?? {
+        month: monthKey(em.date), itemName: name,
+        unitPrice: emp?.hourlyRate ?? 0,
+        quantity: 0, totalPrice: 0, paid: 0, remaining: 0,
+      };
+      existing.quantity += em.hoursWorked;
+      existing.totalPrice += em.salaryDue;
+      existing.paid += em.salaryPaid;
+      existing.remaining = existing.totalPrice - existing.paid;
+      employeesMap.set(key, existing);
+    }
+
+    // סיכום פאניות לפי שם פאנית × קטגוריה
+    const hairdresserSalesNamed = await HairdresserSale.find()
+      .populate<{ hairdresser: IHairdresser }>("hairdresser")
+      .populate<{ wig: IWig }>("wig");
+    const hairdressersByCatMap = new Map<string, MonthlySummaryEntry>();
+    for (const hs of hairdresserSalesNamed) {
+      const h = hs.hairdresser as IHairdresser;
+      const name = h ? `${h.firstName} ${h.lastName}` : "לא ידוע";
+      const w = hs.wig as IWig;
+      const cat = w?.category === "boutique" ? "בוטיק" : "סטנדרט";
+      const key = `${monthKey(hs.date)}|${name} — ${cat}`;
+      const paid = hs.payments.reduce((s, p) => s + p.amount, 0);
+      const e = hairdressersByCatMap.get(key) ?? {
+        month: monthKey(hs.date), itemName: `${name} — ${cat}`,
+        unitPrice: 0, quantity: 0, totalPrice: 0, paid: 0, remaining: 0,
+      };
+      e.quantity += 1; e.totalPrice += hs.totalPrice; e.paid += paid; e.remaining = e.totalPrice - e.paid;
+      hairdressersByCatMap.set(key, e);
+    }
+
     res.json({
       products: toSortedArray(productsMap),
-      wigs: toSortedArray(wigsMap),
+      customerWigs: toSortedArray(customerWigsMap),
+      hairdresserWigs: toSortedArray(hairdresserWigsMap),
+      hairdressersByCategory: toSortedArray(hairdressersByCatMap),
       services: toSortedArray(servicesMap),
+      suppliers: toSortedArray(suppliersMap),
+      employees: toSortedArray(employeesMap),
     });
   } catch (err) {
     res.status(500).json({ error: getErrorMessage(err) });
@@ -125,7 +212,8 @@ interface CategoryEntry {
 }
 
 interface MonthEntry {
-  income: number;
+  incomeReceived: number;
+  incomeCommitted: number;
   expenses: number;
   profit: number;
   categories: Map<string, CategoryEntry>;
@@ -137,7 +225,7 @@ export const getYearlySummary = async (_req: Request, res: Response) => {
 
     const getOrCreate = (month: string): MonthEntry => {
       if (!monthMap.has(month))
-        monthMap.set(month, { income: 0, expenses: 0, profit: 0, categories: new Map() });
+        monthMap.set(month, { incomeReceived: 0, incomeCommitted: 0, expenses: 0, profit: 0, categories: new Map() });
       return monthMap.get(month)!;
     };
 
@@ -148,9 +236,9 @@ export const getYearlySummary = async (_req: Request, res: Response) => {
       amount: number
     ) => {
       const entry = getOrCreate(month);
-      if (type === "income") entry.income += amount;
+      if (type === "income") entry.incomeReceived += amount;
       else entry.expenses += amount;
-      entry.profit = entry.income - entry.expenses;
+      entry.profit = entry.incomeReceived - entry.expenses;
       const cat = entry.categories.get(label);
       if (cat) cat.amount += amount;
       else entry.categories.set(label, { label, amount, type });
@@ -158,11 +246,24 @@ export const getYearlySummary = async (_req: Request, res: Response) => {
 
     // הכנסות מלקוחות (לפי תאריך תשלום)
     const customers = await Customer.find().select("purchases services");
+
+    // טעינת כל הפאות שנמכרו ללקוחות — לצורך קטגוריה
+    const customerWigIds = new Set<string>();
+    for (const c of customers)
+      for (const p of c.purchases)
+        if (p.itemType === "Wig") customerWigIds.add(String(p.item));
+    const customerWigArr = await Wig.find({ _id: { $in: Array.from(customerWigIds) } }).select("category");
+    const customerWigCatMap = new Map(customerWigArr.map((w) => [String(w._id), w.category]));
+
     for (const customer of customers) {
       for (const purchase of customer.purchases) {
-        const label = purchase.itemType === "Wig" ? "פאות - מכירות" : "מוצרים";
-        for (const payment of purchase.payments) {
-          addAmount(monthKey(payment.date), "income", label, payment.amount);
+        if (purchase.itemType === "Wig") {
+          const cat = customerWigCatMap.get(String(purchase.item)) === "boutique" ? "בוטיק" : "סטנדרט";
+          for (const payment of purchase.payments)
+            addAmount(monthKey(payment.date), "income", `פאות לקוחות - ${cat}`, payment.amount);
+        } else {
+          for (const payment of purchase.payments)
+            addAmount(monthKey(payment.date), "income", "מוצרים", payment.amount);
         }
       }
       for (const record of customer.services) {
@@ -170,6 +271,14 @@ export const getYearlySummary = async (_req: Request, res: Response) => {
           addAmount(monthKey(payment.date), "income", "שירותים", payment.amount);
         }
       }
+    }
+
+    // הכנסות ממכירות פאניות (לפי תאריך תשלום)
+    const hairdresserSalesYearly = await HairdresserSale.find().populate<{ wig: IWig }>("wig");
+    for (const hs of hairdresserSalesYearly) {
+      const cat = (hs.wig as IWig).category === "boutique" ? "בוטיק" : "סטנדרט";
+      for (const payment of hs.payments)
+        addAmount(monthKey(payment.date), "income", `פאות פאניות - ${cat}`, payment.amount);
     }
 
     // הוצאות לספקים (תשלומים בלבד)
@@ -190,10 +299,27 @@ export const getYearlySummary = async (_req: Request, res: Response) => {
       }
     }
 
+    // מחויב – הכנסות על בסיס הצטברות (לפי תאריך מכירה/שירות)
+    for (const customer of customers) {
+      for (const purchase of customer.purchases) {
+        const entry = getOrCreate(monthKey(purchase.date));
+        entry.incomeCommitted += purchase.totalPrice;
+      }
+      for (const record of customer.services) {
+        const entry = getOrCreate(monthKey(record.date));
+        entry.incomeCommitted += record.price;
+      }
+    }
+    for (const hs of hairdresserSalesYearly) {
+      const entry = getOrCreate(monthKey(hs.date));
+      entry.incomeCommitted += hs.totalPrice;
+    }
+
     const months = Array.from(monthMap.entries())
       .map(([month, data]) => ({
         month,
-        income: data.income,
+        incomeReceived: data.incomeReceived,
+        incomeCommitted: data.incomeCommitted,
         expenses: data.expenses,
         profit: data.profit,
         categories: Array.from(data.categories.values()).sort((a, b) => {

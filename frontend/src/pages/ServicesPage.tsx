@@ -11,12 +11,13 @@ export default function ServicesPage() {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<ServiceItem | "new" | null>(null);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummaryReport | null>(null);
+  const [search, setSearch] = useState("");
 
-  const load = async () => {
+  const load = async (q = search) => {
     setLoading(true);
     setError("");
     try {
-      setServices(await servicesApi.list());
+      setServices(await servicesApi.list(q ? { search: q } : undefined));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -24,9 +25,7 @@ export default function ServicesPage() {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(search); }, [search]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("למחוק את השירות?")) return;
@@ -46,6 +45,10 @@ export default function ServicesPage() {
     <div className="page">
       <div className="toolbar">
         <h1>שירותים</h1>
+        <div className="search-box">
+          <input className="search-input" placeholder="חיפוש לפי שם שירות" value={search} onChange={e => setSearch(e.target.value)} />
+          {search && <button className="search-reset" onClick={() => setSearch("")}>✕</button>}
+        </div>
         <div>
           <button className="btn btn-secondary" onClick={openSummary}>
             סיכום חודשי

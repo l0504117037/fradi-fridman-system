@@ -13,12 +13,14 @@ export default function WigsPage() {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<Wig | "new" | null>(null);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummaryReport | null>(null);
+  const [summaryTarget, setSummaryTarget] = useState<{ type: "customer" | "hairdresser"; cat: "boutique" | "standard" } | null>(null);
+  const [search, setSearch] = useState("");
 
-  const load = async () => {
+  const load = async (q = search) => {
     setLoading(true);
     setError("");
     try {
-      setWigs(await wigsApi.list());
+      setWigs(await wigsApi.list(q ? { search: q } : undefined));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -27,9 +29,9 @@ export default function WigsPage() {
   };
 
   useEffect(() => {
-    load();
+    load(search);
     suppliersApi.list().then(setSuppliers).catch(() => {});
-  }, []);
+  }, [search]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("למחוק את הפאה?")) return;
@@ -43,9 +45,10 @@ export default function WigsPage() {
     return wig.supplier.name;
   };
 
-  const openSummary = async () => {
+  const openSummary = async (type: "customer" | "hairdresser", cat: "boutique" | "standard") => {
     try {
       setMonthlySummary(await reportsApi.monthlySummary());
+      setSummaryTarget({ type, cat });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -55,10 +58,15 @@ export default function WigsPage() {
     <div className="page">
       <div className="toolbar">
         <h1>פאות</h1>
+        <div className="search-box">
+          <input className="search-input" placeholder="חיפוש לפי שם / קוד / צבע" value={search} onChange={e => setSearch(e.target.value)} />
+          {search && <button className="search-reset" onClick={() => setSearch("")}>✕</button>}
+        </div>
         <div>
-          <button className="btn btn-secondary" onClick={openSummary}>
-            סיכום חודשי
-          </button>{" "}
+          <button className="btn btn-secondary" onClick={() => openSummary("customer", "boutique")}>לקוחות - בוטיק</button>{" "}
+          <button className="btn btn-secondary" onClick={() => openSummary("customer", "standard")}>לקוחות - סטנדרט</button>{" "}
+          <button className="btn btn-secondary" onClick={() => openSummary("hairdresser", "boutique")}>פאניות - בוטיק</button>{" "}
+          <button className="btn btn-secondary" onClick={() => openSummary("hairdresser", "standard")}>פאניות - סטנדרט</button>{" "}
           <button className="btn" onClick={() => setEditing("new")}>
             + פאה חדשה
           </button>
@@ -78,6 +86,7 @@ export default function WigsPage() {
             <th>מחיר</th>
             <th>כמות</th>
             <th>אחריות (חודשים)</th>
+            <th>קטגוריה</th>
             <th>ספק</th>
             <th></th>
           </tr>
@@ -92,6 +101,7 @@ export default function WigsPage() {
               <td>{w.price}₪</td>
               <td>{w.quantity}</td>
               <td>{w.warrantyTime}</td>
+              <td>{w.category === "boutique" ? "בוטיק" : "סטנדרט"}</td>
               <td>{supplierName(w)}</td>
               <td>
                 <button className="link-btn" onClick={() => setEditing(w)}>
@@ -105,7 +115,7 @@ export default function WigsPage() {
           ))}
           {wigs.length === 0 && !loading && (
             <tr>
-              <td colSpan={9}>אין עדיין פאות</td>
+              <td colSpan={10}>אין עדיין פאות</td>
             </tr>
           )}
         </tbody>
@@ -123,13 +133,20 @@ export default function WigsPage() {
         />
       )}
 
-      {monthlySummary && (
-        <MonthlySummaryModal
-          title="סיכום חודשי - פאות"
-          entries={monthlySummary.wigs}
-          onClose={() => setMonthlySummary(null)}
-        />
-      )}
+      {monthlySummary && summaryTarget && (() => {
+        const catHeb = summaryTarget.cat === "boutique" ? "(בוטיק)" : "(סטנדרט)";
+        const entries = summaryTarget.type === "customer"
+          ? monthlySummary.customerWigs.filter(e => e.itemName.includes(catHeb))
+          : monthlySummary.hairdresserWigs.filter(e => e.itemName.includes(catHeb));
+        const title = `סיכום ${summaryTarget.type === "customer" ? "לקוחות" : "פאניות"} — ${summaryTarget.cat === "boutique" ? "בוטיק" : "סטנדרט"}`;
+        return (
+          <MonthlySummaryModal
+            title={title}
+            entries={entries}
+            onClose={() => { setMonthlySummary(null); setSummaryTarget(null); }}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -153,6 +170,7 @@ function WigModal({
   const [quantity, setQuantity] = useState<number | "">(wig?.quantity ?? "");
   const [warrantyTime, setWarrantyTime] = useState<number | "">(wig?.warrantyTime ?? "");
   const [supplier, setSupplier] = useState(typeof wig?.supplier === "string" ? wig.supplier : wig?.supplier?._id ?? "");
+  const [category, setCategory] = useState<"boutique" | "standard">(wig?.category ?? "standard");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -170,6 +188,7 @@ function WigModal({
         quantity: Number(quantity),
         warrantyTime: Number(warrantyTime),
         supplier: supplier || undefined,
+        category,
       };
       if (wig) {
         await wigsApi.update(wig._id, data);
@@ -229,6 +248,13 @@ function WigModal({
             onChange={(e) => setWarrantyTime(e.target.value === "" ? "" : Number(e.target.value))}
             required
           />
+        </label>
+        <label>
+          קטגוריה
+          <select value={category} onChange={(e) => setCategory(e.target.value as "boutique" | "standard")}>
+            <option value="standard">סטנדרט</option>
+            <option value="boutique">בוטיק</option>
+          </select>
         </label>
         <label>
           ספק

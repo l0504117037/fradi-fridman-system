@@ -18,9 +18,18 @@ export const createWig = async (req: Request, res: Response) => {
 };
 
 // Read all
-export const getWigs = async (_req: Request, res: Response) => {
+export const getWigs = async (req: Request, res: Response) => {
   try {
-    const wigs = await Wig.find().populate("supplier");
+    const { search } = req.query;
+    const filter = search
+      ? { $or: [
+          { name:  { $regex: search, $options: "i" } },
+          { code:  { $regex: search, $options: "i" } },
+          { color: { $regex: search, $options: "i" } },
+          { size:  { $regex: search, $options: "i" } },
+        ]}
+      : {};
+    const wigs = await Wig.find(filter).populate("supplier");
     res.json(wigs);
   } catch (err) {
     res.status(500).json({ error: getErrorMessage(err) });

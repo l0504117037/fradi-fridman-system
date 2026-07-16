@@ -6,9 +6,38 @@ body {
   margin: 0;
   font-family: "Segoe UI", Tahoma, Arial, sans-serif;
   direction: rtl;
-  background: #f5f5f7;
+  background: #FAF6F0;
   color: #222;
 }
+
+/* ── Top Navbar ── */
+.top-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #4A1228;
+  padding: 0.6rem 1.5rem;
+  border-bottom: 2px solid #C4955A;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+.top-navbar-logo {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #C4955A;
+  letter-spacing: 2px;
+}
+.top-navbar-back {
+  background: none;
+  border: none;
+  color: #E8C8D0;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+.top-navbar-back:hover { color: #C4955A; }
 
 .app-layout {
   display: flex;
@@ -18,15 +47,14 @@ body {
 /* Sidebar */
 .sidebar {
   width: 200px;
-  background: #2d2a3d;
+  background: #4A1228;
   color: #fff;
   padding: 1rem;
   flex-shrink: 0;
 }
 
 .sidebar-title {
-  margin: 0 0 1rem;
-  font-size: 1.2rem;
+  display: none;
 }
 
 .sidebar ul {
@@ -41,17 +69,17 @@ body {
 .sidebar a {
   display: block;
   padding: 0.6rem 0.8rem;
-  color: #ddd;
+  color: #E8C8D0;
   text-decoration: none;
   border-radius: 6px;
 }
 
 .sidebar a:hover {
-  background: #423e57;
+  background: #6B1C3A;
 }
 
 .sidebar a.active {
-  background: #6c5ce7;
+  background: #C4955A;
   color: #fff;
 }
 
@@ -59,7 +87,9 @@ body {
   flex: 1;
   padding: 1.5rem;
   overflow-x: auto;
+  position: relative;
 }
+
 
 .page h1 {
   margin-top: 0;
@@ -78,7 +108,7 @@ body {
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 6px;
-  background: #6c5ce7;
+  background: #8B3A5A;
   color: #fff;
   cursor: pointer;
 }
@@ -146,8 +176,8 @@ body {
 /* תגית פגישה בתא */
 .appt-chip {
   position: relative;
-  background: #e8e4ff;
-  border: 1px solid #6c5ce7;
+  background: #F9EDF1;
+  border: 1px solid #8B3A5A;
   border-radius: 6px;
   padding: 0.3rem;
   padding-top: 1.1rem;
@@ -158,7 +188,7 @@ body {
 }
 
 .appt-chip:hover {
-  background: #d8d2ff;
+  background: #F2DDE4;
 }
 
 .chip-delete {
@@ -189,7 +219,7 @@ body {
   padding: 0 4px;
   border: none;
   border-radius: 4px;
-  background: #6c5ce7;
+  background: #C4955A;
   color: #fff;
   font-size: 0.65rem;
   line-height: 16px;
@@ -197,7 +227,7 @@ body {
 }
 
 .chip-history:hover {
-  background: #5a4bd1;
+  background: #A87840;
 }
 
 .chip-time {
@@ -369,7 +399,7 @@ body {
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 6px;
-  background: #6c5ce7;
+  background: #8B3A5A;
   color: #fff;
   cursor: pointer;
   align-self: flex-start;
@@ -419,13 +449,21 @@ tr:hover td {
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 6px;
-  background: #6c5ce7;
+  background: #8B3A5A;
   color: #fff;
   cursor: pointer;
 }
 
+.btn:hover:not(:disabled) {
+  background: #6B1C3A;
+}
+
 .btn-secondary {
-  background: #aaa;
+  background: #C4955A;
+}
+
+.btn-secondary:hover {
+  background: #A87840;
 }
 
 .btn-danger {
@@ -435,7 +473,7 @@ tr:hover td {
 .link-btn {
   background: none;
   border: none;
-  color: #6c5ce7;
+  color: #8B3A5A;
   cursor: pointer;
   padding: 0;
   text-decoration: underline;
@@ -488,6 +526,30 @@ tr:hover td {
   margin-bottom: 0.5rem;
 }
 
+/* ── search box ── */
+.search-box { position: relative; display: inline-flex; align-items: center; }
+.search-input {
+  padding: 0.35rem 1.6rem 0.35rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  min-width: 180px;
+}
+.search-input:focus { outline: none; border-color: #C4955A; }
+.search-reset {
+  position: absolute;
+  left: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #aaa;
+  font-size: 0.85rem;
+  padding: 0;
+  line-height: 1;
+}
+.search-reset:hover { color: #333; }
+
 .back-link {
   display: inline-block;
   margin-bottom: 1rem;
@@ -521,6 +583,9 @@ tr:hover td {
   font-size: 0.85rem;
 }
 
+/* שורת-משנה "מחויב" בכרטיס הכנסות */
+.card-sub { font-size: 0.78rem; color: #00cec9; margin-top: 2px; }
+
 /* ── summary cards – colored variants ── */
 .summary-card--income { border-top: 3px solid #00b894; }
 .summary-card--income .value { color: #00b894; }
@@ -528,8 +593,8 @@ tr:hover td {
 .summary-card--expense { border-top: 3px solid #e17055; }
 .summary-card--expense .value { color: #e17055; }
 
-.summary-card--profit { border-top: 3px solid #0984e3; }
-.summary-card--profit .value { color: #0984e3; }
+.summary-card--profit { border-top: 3px solid #C4955A; }
+.summary-card--profit .value { color: #C4955A; }
 
 /* ── year navigation ── */
 .year-nav {
@@ -563,6 +628,7 @@ tr:hover td {
 }
 
 .legend-dot--income { background: #00b894; }
+.legend-dot--committed { background: #55efc4; }
 .legend-dot--expense { background: #e17055; }
 
 /* ── bar chart container ── */
@@ -573,7 +639,7 @@ tr:hover td {
 /* ── month grid (3 × 4) ── */
 .month-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
@@ -593,8 +659,8 @@ tr:hover td {
 }
 
 .month-cell--selected {
-  border-color: #00b894 !important;
-  background: #f0fff9;
+  border-color: #C4955A !important;
+  background: #FDF6EC;
 }
 
 .month-cell--empty {

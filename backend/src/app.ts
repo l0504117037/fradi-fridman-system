@@ -9,6 +9,7 @@ import serviceRoutes from "./routes/serviceRoutes";
 import wigRoutes from "./routes/wigRoutes";
 import appointmentRoutes from "./routes/appointmentRoutes";
 import reportRoutes from "./routes/reportRoutes";
+import hairdresserRoutes from "./routes/hairdresserRoutes";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/api/services", serviceRoutes);
 app.use("/api/wigs", wigRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/hairdressers", hairdresserRoutes);
 
 
 

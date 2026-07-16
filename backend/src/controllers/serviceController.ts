@@ -18,9 +18,16 @@ export const createService = async (req: Request, res: Response) => {
 };
 
 // Read all
-export const getServices = async (_req: Request, res: Response) => {
+export const getServices = async (req: Request, res: Response) => {
   try {
-    const services = await Service.find();
+    const { search } = req.query;
+    const filter = search
+      ? { $or: [
+          { name:        { $regex: search, $options: "i" } },
+          { description: { $regex: search, $options: "i" } },
+        ]}
+      : {};
+    const services = await Service.find(filter);
     res.json(services);
   } catch (err) {
     res.status(500).json({ error: getErrorMessage(err) });

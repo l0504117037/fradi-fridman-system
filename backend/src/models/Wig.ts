@@ -9,6 +9,7 @@ export interface IWig extends Document {
   quantity: number;
   warrantyTime: number; // חודשים
   supplier?: Types.ObjectId;
+  category: "boutique" | "standard";
 }
 
 const WigSchema: Schema = new Schema(
@@ -21,6 +22,7 @@ const WigSchema: Schema = new Schema(
     quantity: { type: Number, required: true },
     warrantyTime: { type: Number, required: true },
     supplier: { type: Schema.Types.ObjectId, ref: "Supplier" },
+    category: { type: String, enum: ["boutique", "standard"], required: true, default: "standard" },
   },
   { timestamps: true }
 );

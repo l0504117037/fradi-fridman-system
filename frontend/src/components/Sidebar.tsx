@@ -7,6 +7,8 @@ const links = [
   { to: "/wigs", label: "פאות", end: false },
   { to: "/products", label: "מוצרים", end: false },
   { to: "/services", label: "שירותים", end: false },
+  { to: "/hairdressers", label: "פאניות", end: false },
+  { to: "/employees", label: "עובדות", end: false },
   { to: "/summaries", label: "סיכומים", end: false },
 ];
 

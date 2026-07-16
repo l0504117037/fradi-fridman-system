@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { appointmentsApi } from "../api/appointments";
 import { customersApi } from "../api/customers";
 import { Appointment, Customer } from "../api/types";
@@ -20,7 +20,20 @@ const NOTE_TRUNCATE_LENGTH = 18;
 
 export default function CalendarPage() {
   const navigate = useNavigate();
-  const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const weekStart = useMemo(() => {
+    const param = searchParams.get("week");
+    if (param) {
+      const d = new Date(param);
+      if (!isNaN(d.getTime())) return getWeekStart(d);
+    }
+    return getWeekStart(new Date());
+  }, [searchParams]);
+
+  const setWeekStart = (date: Date) => {
+    setSearchParams({ week: formatDateISO(date) }, { replace: false });
+  };
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,6 +41,12 @@ export default function CalendarPage() {
   const [addModal, setAddModal] = useState<{ date: Date; time: string } | null>(null);
   const [editAppointment, setEditAppointment] = useState<Appointment | null>(null);
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
+  const [filterDate, setFilterDate] = useState("");
+  const [filterName, setFilterName] = useState("");
+
+  const apptMatch = (a: Appointment) =>
+    !filterName ||
+    `${a.customer.firstname} ${a.customer.lastname}`.includes(filterName);
 
   const days = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i));
 
@@ -83,7 +102,7 @@ export default function CalendarPage() {
     const isExpanded = expandedNote === a._id;
     const showFull = !note || note.length <= NOTE_TRUNCATE_LENGTH || isExpanded;
     return (
-      <div className="appt-chip" key={a._id} onClick={() => setEditAppointment(a)}>
+      <div className="appt-chip" key={a._id} onClick={() => setEditAppointment(a)} style={{ opacity: apptMatch(a) ? 1 : 0.25 }}>
         <button
           className="chip-delete"
           title="מחיקה"
@@ -133,7 +152,31 @@ export default function CalendarPage() {
         <h2>
           {formatDateDisplay(weekStart)} - {formatDateDisplay(addDays(weekStart, 5))}
         </h2>
-        <div>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <div className="search-box">
+            <input
+              className="search-input"
+              type="date"
+              title="קפוץ לתאריך"
+              value={filterDate}
+              onChange={e => {
+                setFilterDate(e.target.value);
+                if (e.target.value) setWeekStart(getWeekStart(new Date(e.target.value)));
+              }}
+              style={{ minWidth: 130 }}
+            />
+            {filterDate && <button className="search-reset" onClick={() => setFilterDate("")}>✕</button>}
+          </div>
+          <div className="search-box">
+            <input
+              className="search-input"
+              placeholder="חיפוש לפי שם לקוחה"
+              value={filterName}
+              onChange={e => setFilterName(e.target.value)}
+              style={{ minWidth: 130 }}
+            />
+            {filterName && <button className="search-reset" onClick={() => setFilterName("")}>✕</button>}
+          </div>
           <button onClick={() => setWeekStart(addDays(weekStart, 7))}>שבוע הבא &rarr;</button>
           <button onClick={() => setWeekStart(getWeekStart(new Date()))}>היום</button>
         </div>

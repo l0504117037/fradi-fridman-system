@@ -9,12 +9,13 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [search, setSearch] = useState("");
 
-  const load = async () => {
+  const load = async (q = search) => {
     setLoading(true);
     setError("");
     try {
-      setCustomers(await customersApi.list());
+      setCustomers(await customersApi.list(q ? { search: q } : undefined));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -22,14 +23,16 @@ export default function CustomersPage() {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(search); }, [search]);
 
   return (
     <div className="page">
       <div className="toolbar">
         <h1>לקוחות</h1>
+        <div className="search-box">
+          <input className="search-input" placeholder="חיפוש לפי שם / טלפון" value={search} onChange={e => setSearch(e.target.value)} />
+          {search && <button className="search-reset" onClick={() => setSearch("")}>✕</button>}
+        </div>
         <button className="btn" onClick={() => setShowModal(true)}>
           + לקוחה חדשה
         </button>

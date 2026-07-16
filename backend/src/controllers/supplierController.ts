@@ -35,9 +35,17 @@ export const createSupplier = async (req: Request, res: Response) => {
 };
 
 // Read all
-export const getSuppliers = async (_req: Request, res: Response) => {
+export const getSuppliers = async (req: Request, res: Response) => {
   try {
-    const suppliers = await Supplier.find();
+    const { search } = req.query;
+    const filter = search
+      ? { $or: [
+          { name:  { $regex: search, $options: "i" } },
+          { phone: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ]}
+      : {};
+    const suppliers = await Supplier.find(filter);
     const result = suppliers.map((s) => ({
       ...s.toObject(),
       summary: calcSummary(s.transactions),

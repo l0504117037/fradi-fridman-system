@@ -23,9 +23,18 @@ export const createCustomer = async (req: Request, res: Response) => {
 };
 
 // Read all
-export const getCustomers = async (_req: Request, res: Response) => {
+export const getCustomers = async (req: Request, res: Response) => {
   try {
-    const customers = await Customer.find();
+    const { search } = req.query;
+    const filter = search
+      ? { $or: [
+          { firstname: { $regex: search, $options: "i" } },
+          { lastname:  { $regex: search, $options: "i" } },
+          { phone:     { $regex: search, $options: "i" } },
+          { mail:      { $regex: search, $options: "i" } },
+        ]}
+      : {};
+    const customers = await Customer.find(filter);
     res.json(customers);
   } catch (err: unknown) {
     res.status(400).json({ error: getErrorMessage(err) });

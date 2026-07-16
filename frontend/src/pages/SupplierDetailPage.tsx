@@ -48,9 +48,7 @@ export default function SupplierDetailPage() {
 
   return (
     <div className="page">
-      <Link to="/suppliers" className="back-link">
-        &rarr; חזרה לספקים
-      </Link>
+
 
       <div className="toolbar">
         <h1>{supplier.name}</h1>

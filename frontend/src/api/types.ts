@@ -21,6 +21,30 @@ export interface Wig {
   quantity: number;
   warrantyTime: number;
   supplier?: Supplier | string;
+  category: "boutique" | "standard";
+}
+
+export interface Hairdresser {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email?: string;
+}
+
+export interface HairdresserSale {
+  _id: string;
+  hairdresser: string;
+  wig: Wig;
+  totalPrice: number;
+  date: string;
+  payments: Payment[];
+  note?: string;
+}
+
+export interface HairdresserDetail {
+  hairdresser: Hairdresser;
+  sales: HairdresserSale[];
 }
 
 export interface ServiceItem {
@@ -120,8 +144,12 @@ export interface MonthlySummaryEntry {
 
 export interface MonthlySummaryReport {
   products: MonthlySummaryEntry[];
-  wigs: MonthlySummaryEntry[];
+  customerWigs: MonthlySummaryEntry[];
+  hairdresserWigs: MonthlySummaryEntry[];
+  hairdressersByCategory: MonthlySummaryEntry[];
   services: MonthlySummaryEntry[];
+  suppliers: MonthlySummaryEntry[];
+  employees: MonthlySummaryEntry[];
 }
 
 // סיכום שנתי: הכנסות / הוצאות / רווח לפי חודש
@@ -133,7 +161,8 @@ export interface CategoryAmount {
 
 export interface YearlySummaryMonth {
   month: string; // YYYY-MM
-  income: number;
+  incomeReceived: number;
+  incomeCommitted: number;
   expenses: number;
   profit: number;
   categories: CategoryAmount[];
@@ -141,6 +170,24 @@ export interface YearlySummaryMonth {
 
 export interface YearlySummaryResponse {
   months: YearlySummaryMonth[];
+}
+
+export interface Employee {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  hourlyRate: number;
+}
+
+export interface EmployeeMonthly {
+  _id: string;
+  employee: string;
+  date: string;
+  hoursWorked: number;
+  salaryDue: number;
+  salaryPaid: number;
 }
 
 // בקשה ליצירת תור + פעולה (רכישה/שירות) חדשה ללקוחה
